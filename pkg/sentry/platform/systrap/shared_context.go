@@ -377,6 +377,9 @@ const (
 var (
 	deepSleepTimeout uint64
 	handshakeTimeout uint64
+	// fastPathMaxWait bounds how long the dispatcher polls one context before
+	// handing it to the slow path, where a stuck stub is detected.
+	fastPathMaxWait uint64
 )
 
 // initSleepTimeouts converts deepSleepTimeoutNS and handshakeTimeoutNS from
@@ -391,6 +394,7 @@ func initSleepTimeouts() {
 	const nsPerSec = uint64(1000000000)
 	deepSleepTimeout = max(1, freq*deepSleepTimeoutNS/nsPerSec)
 	handshakeTimeout = max(1, freq*handshakeTimeoutNS/nsPerSec)
+	fastPathMaxWait = max(1, freq*uint64(contextPreemptTimeout.Nanoseconds())/nsPerSec)
 }
 
 // loop is processing contexts in the queue. Only one instance of it can be
@@ -429,7 +433,7 @@ func (q *fastPathDispatcher) loop(target *sharedContext) {
 
 			event := sharedContextReady
 			if ctx.state() == sysmsg.ContextStateNone {
-				if slowPath {
+				if slowPath || uint64(now-ctx.startWaitingTS) > fastPathMaxWait {
 					event = sharedContextSlowPath
 				} else if !ctx.kicked && uint64(now-ctx.startWaitingTS) > handshakeTimeout {
 					if ctx.isAcked() {
