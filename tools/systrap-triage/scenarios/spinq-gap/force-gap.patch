@@ -1,0 +1,31 @@
+diff --git a/pkg/sentry/platform/systrap/stub_unsafe.go b/pkg/sentry/platform/systrap/stub_unsafe.go
+index 4ea7c67c0..502fcc920 100644
+--- a/pkg/sentry/platform/systrap/stub_unsafe.go
++++ b/pkg/sentry/platform/systrap/stub_unsafe.go
+@@ -263,6 +263,12 @@ func stubInit() {
+ 	}
+ 	// Randomize stubSysmsgStack address.
+ 	gap := uintptr(rand.Uint64()) * hostarch.PageSize % (maximumUserAddress - stubStart - mapLen)
++	if v, err := strconv.Atoi(os.Getenv("RUNSC_REPRO_STUB_REGION")); err == nil {
++		q := stubStart + stubSpinningThreadQueueAddr
++		target := (q &^ (sysmsg.PerThreadMemSize - 1)) - uintptr(v)*sysmsg.PerThreadMemSize
++		gap = target - (stubStart + stubSysmsgStack)
++		log.Infof("REPRO forced gap %#x: queue %#x in region %d page %d", gap, q, v, (q%sysmsg.PerThreadMemSize)/hostarch.PageSize)
++	}
+ 	stubSysmsgStack += uintptr(gap)
+ 	stubContextQueueRegion += uintptr(gap)
+ 	stubContextRegion += uintptr(gap)
+diff --git a/runsc/sandbox/sandbox.go b/runsc/sandbox/sandbox.go
+index fde5c05f6..8c8d1ffd9 100644
+--- a/runsc/sandbox/sandbox.go
++++ b/runsc/sandbox/sandbox.go
+@@ -933,6 +933,9 @@ func sandboxProcessEnv(conf *config.Config, opts sandboxProcessEnvOptions) []str
+ 			env = append(env, "TMPDIR="+tmpDir)
+ 		}
+ 	}
++	if v := os.Getenv("RUNSC_REPRO_STUB_REGION"); v != "" {
++		env = append(env, "RUNSC_REPRO_STUB_REGION="+v)
++	}
+ 	if opts.enforceRelease {
+ 		env = gvisorbinaries.WithEnforceRelease(env)
+ 	}

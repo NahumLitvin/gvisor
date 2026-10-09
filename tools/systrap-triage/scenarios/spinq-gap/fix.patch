@@ -1,0 +1,8 @@
+diff --git a/pkg/sentry/platform/systrap/stub_unsafe.go b/pkg/sentry/platform/systrap/stub_unsafe.go
+index 4ea7c67c0..a5c52d63a 100644
+--- a/pkg/sentry/platform/systrap/stub_unsafe.go
++++ b/pkg/sentry/platform/systrap/stub_unsafe.go
+@@ -267,2 +267,3 @@ func stubInit() {
+ 	stubContextQueueRegion += uintptr(gap)
++	stubSpinningThreadQueueAddr += uintptr(gap)
+ 	stubContextRegion += uintptr(gap)
